@@ -1,0 +1,48 @@
+/* Cinema Custom Styles & Glassmorphism */
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(229, 9, 20, 0.4), inset 0 0 10px rgba(229, 9, 20, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(229, 9, 20, 0.7), inset 0 0 15px rgba(229, 9, 20, 0.4);
+  }
+}
+
+.glow-red {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+.glass-panel {
+  background: rgba(18, 20, 26, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-pill {
+  background: rgba(15, 17, 23, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090b0e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1f242e;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #333a4a;
+}
