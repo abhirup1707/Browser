@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { useBookingStore } from '../../store/bookingStore';
 import { BEST_SWEET_SPOT_SEATS } from '../../utils/seatCoordinates';
+import { AudienceMember3D } from './AudienceMember3D';
 import type { SeatInfo } from '../../types/cinema';
 
 export const CinemaSeats3D: React.FC = () => {
@@ -11,6 +12,8 @@ export const CinemaSeats3D: React.FC = () => {
   const viewMode = useBookingStore((s) => s.viewMode);
   const interactionMode = useBookingStore((s) => s.interactionMode);
   const bestSeatsFilter = useBookingStore((s) => s.bestSeatsFilter);
+  const isAudienceVisible = useBookingStore((s) => s.isAudienceVisible);
+  const selectedFormat = useBookingStore((s) => s.selectedFormat);
   const toggleSeat = useBookingStore((s) => s.toggleSeat);
   const setActiveViewingSeat = useBookingStore((s) => s.setActiveViewingSeat);
 
@@ -58,10 +61,10 @@ export const CinemaSeats3D: React.FC = () => {
 
   const handleSeatClick = (seat: SeatInfo, e: any) => {
     e.stopPropagation();
-    if (seat.status === 'booked') return;
+    if (seat.status === 'booked' && interactionMode === 'select') return;
 
     if (interactionMode === 'preview') {
-      // In preview mode: view without adding to bill
+      // In preview mode: view from any seat without adding to bill
       setActiveViewingSeat(seat.id);
     } else {
       // In select mode: direct selection for billing
@@ -82,6 +85,7 @@ export const CinemaSeats3D: React.FC = () => {
 
         // In first-person seat view, don't render the headrest/backrest of the camera seat to prevent clipping
         const isCameraSeatInSeatView = isViewing && viewMode === 'seat';
+        const shouldRenderAudience = isBooked && isAudienceVisible && !isCameraSeatInSeatView;
 
         let mat = materials.velvetRed;
         if (isSelected) {
@@ -180,6 +184,14 @@ export const CinemaSeats3D: React.FC = () => {
                   decay={2}
                 />
               </group>
+            )}
+
+            {/* 8. 3D Person sitting in this seat (Audience Density Simulation) */}
+            {shouldRenderAudience && (
+              <AudienceMember3D
+                seatId={seat.id}
+                isFormat3D={selectedFormat !== '2D'}
+              />
             )}
           </group>
         );

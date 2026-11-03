@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Armchair,
   X,
@@ -10,7 +10,8 @@ import {
   Play,
   Pause,
   Plus,
-  Check
+  Check,
+  Users
 } from 'lucide-react';
 import { useBookingStore } from '../store/bookingStore';
 import { getSeatRating } from '../utils/seatCoordinates';
@@ -23,6 +24,10 @@ export const SeatControlsOverlay: React.FC = () => {
   const activeThumbnailIndex = useBookingStore((s) => s.activeThumbnailIndex);
   const isVideoMuted = useBookingStore((s) => s.isVideoMuted);
   const isVideoPlaying = useBookingStore((s) => s.isVideoPlaying);
+  const audienceDensity = useBookingStore((s) => s.audienceDensity);
+  const isAudienceVisible = useBookingStore((s) => s.isAudienceVisible);
+  const seats = useBookingStore((s) => s.seats);
+
   const setViewMode = useBookingStore((s) => s.setViewMode);
   const toggle360 = useBookingStore((s) => s.toggle360);
   const setActiveThumbnailIndex = useBookingStore((s) => s.setActiveThumbnailIndex);
@@ -31,9 +36,14 @@ export const SeatControlsOverlay: React.FC = () => {
   const toggleVideoPlay = useBookingStore((s) => s.toggleVideoPlay);
   const addSeatToBooking = useBookingStore((s) => s.addSeatToBooking);
   const removeSeatFromBooking = useBookingStore((s) => s.removeSeatFromBooking);
+  const setAudienceDensity = useBookingStore((s) => s.setAudienceDensity);
+  const toggleAudienceVisibility = useBookingStore((s) => s.toggleAudienceVisibility);
+
+  const [isCrowdMenuOpen, setIsCrowdMenuOpen] = useState(false);
 
   const isSelected = selectedSeatIds.includes(activeViewingSeatId);
   const seatRating = getSeatRating(activeViewingSeatId || 'H17');
+  const bookedSeatsCount = seats.filter((s) => s.status === 'booked').length;
 
   const angles = [
     {
@@ -106,6 +116,104 @@ export const SeatControlsOverlay: React.FC = () => {
           >
             {isVideoPlaying ? <Pause className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
           </button>
+
+          {/* AUDIENCE DENSITY SIMULATOR BUTTON & POPOVER */}
+          <div className="relative">
+            <button
+              onClick={() => setIsCrowdMenuOpen((prev) => !prev)}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-full flex items-center space-x-1.5 text-[10px] sm:text-xs font-semibold backdrop-blur-md border shadow-lg transition-all cursor-pointer ${
+                isAudienceVisible && audienceDensity > 0
+                  ? 'bg-purple-900/60 border-purple-400/60 text-purple-200 hover:bg-purple-900/80 shadow-purple-950/40'
+                  : 'bg-[#11131a]/80 hover:bg-[#1f232e] border-white/10 text-zinc-300'
+              }`}
+              title="Audience Density Simulator: View 3D crowd in booked seats"
+            >
+              <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-400" />
+              <span className="hidden xs:inline">
+                {isAudienceVisible ? `Crowd: ${audienceDensity}%` : 'Crowd: Off'}
+              </span>
+              <span className="xs:hidden font-bold">{audienceDensity}%</span>
+            </button>
+
+            {/* Glassmorphism Simulator Menu */}
+            {isCrowdMenuOpen && (
+              <div className="absolute top-11 left-0 w-72 sm:w-80 p-3.5 rounded-2xl bg-[#0d1017]/95 backdrop-blur-xl border border-white/15 shadow-2xl z-50 text-white space-y-3 pointer-events-auto">
+                <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                  <div className="flex items-center space-x-1.5">
+                    <Users className="w-4 h-4 text-purple-400" />
+                    <span className="font-bold text-xs tracking-wide">Audience Simulator</span>
+                  </div>
+                  <button
+                    onClick={() => setIsCrowdMenuOpen(false)}
+                    className="text-zinc-400 hover:text-white p-0.5 rounded-md hover:bg-white/10 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Visibility Toggle */}
+                <div className="flex items-center justify-between bg-white/5 p-2 rounded-xl text-xs">
+                  <span className="text-zinc-300 font-medium">3D Viewers in Seats</span>
+                  <button
+                    onClick={toggleAudienceVisibility}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                      isAudienceVisible
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                    }`}
+                  >
+                    {isAudienceVisible ? 'Visible ✓' : 'Hidden ✕'}
+                  </button>
+                </div>
+
+                {/* Slider */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-zinc-400">Audience Occupancy</span>
+                    <span className="font-bold text-purple-300">
+                      {audienceDensity}% ({bookedSeatsCount} Booked)
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={audienceDensity}
+                    onChange={(e) => setAudienceDensity(parseInt(e.target.value, 10))}
+                    className="w-full accent-purple-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg appearance-none"
+                  />
+                </div>
+
+                {/* Presets */}
+                <div className="grid grid-cols-4 gap-1.5 pt-0.5">
+                  {[
+                    { label: 'Empty', pct: 0 },
+                    { label: 'Matinee', pct: 25 },
+                    { label: 'Evening', pct: 55 },
+                    { label: 'Housefull', pct: 85 }
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => setAudienceDensity(preset.pct)}
+                      className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer border ${
+                        audienceDensity === preset.pct
+                          ? 'bg-purple-600 border-purple-400 text-white font-bold shadow-md shadow-purple-950'
+                          : 'bg-white/5 hover:bg-white/10 border-white/5 text-zinc-300'
+                      }`}
+                    >
+                      <div>{preset.label}</div>
+                      <div className="text-[9px] opacity-75">{preset.pct}%</div>
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-[9px] text-zinc-400 leading-relaxed italic border-t border-white/5 pt-2">
+                  💡 Real 3D people sit in booked seats to preview authentic sightline clearance and view obstruction from your seat.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Center Pill: "Seat F10 — View from your seat" + Interactive Direct Select Option */}
@@ -195,6 +303,22 @@ export const SeatControlsOverlay: React.FC = () => {
           <Armchair className="w-4 h-4 sm:w-5 sm:h-5 mb-0.5 sm:mb-1" />
           <span className="text-[9px] sm:text-[10px] font-medium leading-tight">
             {viewMode === 'theatre' ? 'Seat View' : 'Theatre View'}
+          </span>
+        </button>
+
+        {/* 3. Quick Audience Crowd Toggle Button */}
+        <button
+          onClick={toggleAudienceVisibility}
+          className={`flex flex-col items-center justify-center p-2 sm:p-2.5 px-2.5 sm:px-3 rounded-xl sm:rounded-2xl transition-all cursor-pointer backdrop-blur-md border shadow-2xl text-center min-w-[64px] sm:min-w-[76px] ${
+            isAudienceVisible && audienceDensity > 0
+              ? 'bg-purple-900/80 border-purple-400 text-purple-200 shadow-purple-950/50'
+              : 'bg-[#12151c]/80 hover:bg-[#1c202a] border-white/15 text-zinc-400'
+          }`}
+          title="Toggle 3D Audience Viewers"
+        >
+          <Users className="w-4 h-4 sm:w-5 sm:h-5 mb-0.5 sm:mb-1 text-purple-300" />
+          <span className="text-[9px] sm:text-[10px] font-medium leading-tight">
+            {isAudienceVisible ? `Crowd ${audienceDensity}%` : 'Crowd Off'}
           </span>
         </button>
       </div>

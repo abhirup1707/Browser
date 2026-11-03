@@ -8,7 +8,8 @@ import {
   Sparkles,
   Plus,
   Check,
-  Film
+  Film,
+  Users
 } from 'lucide-react';
 import { useBookingStore } from '../store/bookingStore';
 import {
@@ -30,6 +31,8 @@ export const SeatMap2D: React.FC = () => {
   const interactionMode = useBookingStore((s) => s.interactionMode);
   const bestSeatsFilter = useBookingStore((s) => s.bestSeatsFilter);
   const selectedFormat = useBookingStore((s) => s.selectedFormat);
+  const audienceDensity = useBookingStore((s) => s.audienceDensity);
+  const isAudienceVisible = useBookingStore((s) => s.isAudienceVisible);
 
   const toggleSeat = useBookingStore((s) => s.toggleSeat);
   const setActiveViewingSeat = useBookingStore((s) => s.setActiveViewingSeat);
@@ -41,10 +44,13 @@ export const SeatMap2D: React.FC = () => {
   const addSeatToBooking = useBookingStore((s) => s.addSeatToBooking);
   const removeSeatFromBooking = useBookingStore((s) => s.removeSeatFromBooking);
   const selectBestSweetSpotSeat = useBookingStore((s) => s.selectBestSweetSpotSeat);
+  const setAudienceDensity = useBookingStore((s) => s.setAudienceDensity);
+  const toggleAudienceVisibility = useBookingStore((s) => s.toggleAudienceVisibility);
 
   const totalPrice = getTotalPrice();
   const currentSeatRating = getSeatRating(activeViewingSeatId || 'H17');
   const isViewingSeatSelected = selectedSeatIds.includes(activeViewingSeatId);
+  const bookedSeatsCount = seats.filter((s) => s.status === 'booked').length;
 
   // Dynamic Tier Pricing according to Format (2D, 3D, IMAX)
   const balconyPrice = getTierPrice('recliner', selectedFormat);
@@ -109,11 +115,15 @@ export const SeatMap2D: React.FC = () => {
               <button
                 key={seatId}
                 type="button"
-                disabled={isBooked}
+                disabled={isBooked && interactionMode === 'select'}
                 onClick={() => handleSeatClick(seatId)}
-                title={`Seat ${seatId} (${rowConfig.section} · ${selectedFormat} - ₹${dynamicPrice}) ${
-                  isSweetSpot ? '⭐ Optimal Sweet Spot' : ''
-                }`}
+                title={
+                  isBooked
+                    ? `Seat ${seatId} (${rowConfig.section}) · Occupied by another moviegoer`
+                    : `Seat ${seatId} (${rowConfig.section} · ${selectedFormat} - ₹${dynamicPrice}) ${
+                        isSweetSpot ? '⭐ Optimal Sweet Spot' : ''
+                      }`
+                }
                 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[3px] text-[7px] sm:text-[8px] flex items-center justify-center transition-all cursor-pointer ${style}`}
               >
                 {seatNum}
@@ -160,11 +170,15 @@ export const SeatMap2D: React.FC = () => {
               <button
                 key={seatId}
                 type="button"
-                disabled={isBooked}
+                disabled={isBooked && interactionMode === 'select'}
                 onClick={() => handleSeatClick(seatId)}
-                title={`Seat ${seatId} (${rowConfig.section} · ${selectedFormat} - ₹${dynamicPrice}) ${
-                  isSweetSpot ? '⭐ Optimal Sweet Spot' : ''
-                }`}
+                title={
+                  isBooked
+                    ? `Seat ${seatId} (${rowConfig.section}) · Occupied by another moviegoer`
+                    : `Seat ${seatId} (${rowConfig.section} · ${selectedFormat} - ₹${dynamicPrice}) ${
+                        isSweetSpot ? '⭐ Optimal Sweet Spot' : ''
+                      }`
+                }
                 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[3px] text-[7px] sm:text-[8px] flex items-center justify-center transition-all cursor-pointer ${style}`}
               >
                 {seatNum}
@@ -374,6 +388,45 @@ export const SeatMap2D: React.FC = () => {
           )}
         </div>
 
+        {/* 5. AUDIENCE DENSITY SIMULATOR BAR */}
+        <div className="p-2 sm:p-2.5 rounded-xl bg-[#10131d] border border-purple-500/20 flex flex-col space-y-1.5 shadow-sm">
+          <div className="flex items-center justify-between text-[11px]">
+            <div className="flex items-center space-x-1.5 text-purple-300 font-semibold">
+              <Users className="w-3.5 h-3.5 text-purple-400" />
+              <span>Audience Simulator:</span>
+              <span className="text-white font-bold">{audienceDensity}%</span>
+              <span className="text-zinc-500 text-[10px]">({bookedSeatsCount} Booked)</span>
+            </div>
+            <button
+              onClick={toggleAudienceVisibility}
+              className="text-[9px] font-bold text-zinc-400 hover:text-white px-2 py-0.5 rounded bg-white/5 border border-white/10 hover:bg-white/10 cursor-pointer transition-all"
+            >
+              {isAudienceVisible ? '3D People ON' : '3D People OFF'}
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-1.5">
+            {[
+              { label: '0% Empty', val: 0 },
+              { label: '35% Matinee', val: 35 },
+              { label: '65% Evening', val: 65 },
+              { label: '85% Full', val: 85 }
+            ].map((p) => (
+              <button
+                key={p.label}
+                onClick={() => setAudienceDensity(p.val)}
+                className={`flex-1 py-1 rounded-md text-[9px] font-semibold transition-all cursor-pointer border ${
+                  audienceDensity === p.val
+                    ? 'bg-purple-600 border-purple-400 text-white shadow-sm shadow-purple-950 font-bold'
+                    : 'bg-white/5 hover:bg-white/10 border-white/5 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Legend Row */}
         <div className="flex items-center justify-between text-[10px] text-zinc-400 pt-0.5">
           <div className="flex items-center space-x-1">
@@ -389,8 +442,8 @@ export const SeatMap2D: React.FC = () => {
             <span>Selected</span>
           </div>
           <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 rounded bg-amber-500/30 border border-amber-400" />
-            <span>Sweet Spot</span>
+            <div className="w-3 h-3 rounded bg-amber-500/85 border border-amber-400" />
+            <span>Occupied (3D)</span>
           </div>
         </div>
 

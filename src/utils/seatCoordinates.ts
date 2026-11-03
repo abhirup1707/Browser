@@ -295,7 +295,84 @@ export function calculateSeat3DPosition(
   };
 }
 
-export function generateInitialSeats(): SeatInfo[] {
+// Calculate realistic cinema booking order (Sweet spots & Balcony fill first, wings & front fill last)
+export function getRankedSeatIds(): string[] {
+  const allSeatScores: { id: string; score: number }[] = [];
+
+  const rowWeights: Record<string, number> = {
+    H: 100,
+    G: 97,
+    I: 94,
+    F: 91,
+    J: 89,
+    K: 87,
+    E: 83,
+    L: 80,
+    D: 72,
+    C: 62,
+    B: 50,
+    A: 38
+  };
+
+  CINEMA_SEAT_CONFIG.forEach((rowConfig) => {
+    const { row, leftSeats, rightSeats } = rowConfig;
+    const baseRowScore = rowWeights[row] || 70;
+
+    // Left seats: closest to aisle is last item (leftSeats.length - 1)
+    leftSeats.forEach((seatNum, idx) => {
+      const distFromAisle = leftSeats.length - 1 - idx;
+      const centralityScore = Math.max(0, 35 - distFromAisle * 2.8);
+      // Couple cluster grouping (pair every 2 seats)
+      const pairOffset = idx % 2 === 0 ? 0.8 : -0.8;
+      const score = baseRowScore + centralityScore + pairOffset;
+      allSeatScores.push({ id: `${row}${seatNum}`, score });
+    });
+
+    // Right seats: closest to aisle is first item (idx = 0)
+    rightSeats.forEach((seatNum, idx) => {
+      const distFromAisle = idx;
+      const centralityScore = Math.max(0, 35 - distFromAisle * 2.8);
+      const pairOffset = idx % 2 === 0 ? 0.8 : -0.8;
+      const score = baseRowScore + centralityScore + pairOffset;
+      allSeatScores.push({ id: `${row}${seatNum}`, score });
+    });
+  });
+
+  return allSeatScores.sort((a, b) => b.score - a.score).map((s) => s.id);
+}
+
+// Function to apply an audience density percentage (0 - 100)
+export function applyDensityToSeats(
+  currentSeats: SeatInfo[],
+  densityPercentage: number,
+  selectedSeatIds: string[] = [],
+  activeViewingSeatId: string = ''
+): SeatInfo[] {
+  const clampedDensity = Math.max(0, Math.min(100, densityPercentage));
+  const rankedIds = getRankedSeatIds();
+  const targetCount = Math.round((clampedDensity / 100) * rankedIds.length);
+
+  // Pick top N ranked seats to be booked, skipping any user-selected seat
+  const bookedSet = new Set<string>();
+  for (const id of rankedIds) {
+    if (bookedSet.size >= targetCount) break;
+    if (selectedSeatIds.includes(id)) continue;
+    if (id === activeViewingSeatId && clampedDensity < 95) continue;
+    bookedSet.add(id);
+  }
+
+  return currentSeats.map((seat) => {
+    if (selectedSeatIds.includes(seat.id)) {
+      return { ...seat, status: 'selected' as SeatStatus };
+    }
+    if (bookedSet.has(seat.id)) {
+      return { ...seat, status: 'booked' as SeatStatus };
+    }
+    return { ...seat, status: 'available' as SeatStatus };
+  });
+}
+
+export function generateInitialSeats(densityPercentage: number = 35): SeatInfo[] {
   const seats: SeatInfo[] = [];
 
   CINEMA_SEAT_CONFIG.forEach((rowConfig, rowIndex) => {
@@ -354,7 +431,7 @@ export function generateInitialSeats(): SeatInfo[] {
     });
   });
 
-  return seats;
+  return applyDensityToSeats(seats, densityPercentage, [], 'H17');
 }
 
 export function getSeatCameraView(seatId: string): {

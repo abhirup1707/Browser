@@ -10,7 +10,7 @@ import type {
   EventCategory
 } from '../types/cinema';
 import { MOVIES, THEATRES } from '../data/movies';
-import { generateInitialSeats, getTierPrice } from '../utils/seatCoordinates';
+import { generateInitialSeats, getTierPrice, applyDensityToSeats } from '../utils/seatCoordinates';
 
 export type InteractionMode = 'preview' | 'select';
 export type BestSeatsFilter = 'all' | 'sweetspot' | 'balcony' | 'premium';
@@ -42,6 +42,12 @@ interface BookingStoreState {
   setSortOption: (sort: SortOption) => void;
   eventCategory: EventCategory;
   setEventCategory: (cat: EventCategory) => void;
+
+  // Audience Density Simulator & 3D Moviegoers
+  audienceDensity: number;
+  isAudienceVisible: boolean;
+  setAudienceDensity: (density: number) => void;
+  toggleAudienceVisibility: () => void;
 
   // View and Select Mode: Explore seats without billing vs Direct Select
   interactionMode: InteractionMode;
@@ -108,6 +114,20 @@ export const useBookingStore = create<BookingStoreState>((set, get) => {
     selectedFormat: 'IMAX',
     sortOption: 'featured',
     eventCategory: 'all',
+
+    // Audience Density Simulator (Default 35% realistic evening occupancy)
+    audienceDensity: 35,
+    isAudienceVisible: true,
+    setAudienceDensity: (density: number) => {
+      const { seats, selectedSeatIds, activeViewingSeatId } = get();
+      const nextSeats = applyDensityToSeats(seats, density, selectedSeatIds, activeViewingSeatId);
+      set({
+        audienceDensity: density,
+        seats: nextSeats
+      });
+    },
+    toggleAudienceVisibility: () =>
+      set((state) => ({ isAudienceVisible: !state.isAudienceVisible })),
 
     interactionMode: 'preview', // Default to preview mode: explore any seat view without billing!
     bestSeatsFilter: 'all',
@@ -259,7 +279,7 @@ export const useBookingStore = create<BookingStoreState>((set, get) => {
         confirmedBooking: null,
         selectedSeatIds: [],
         activeViewingSeatId: 'H17',
-        seats: generateInitialSeats()
+        seats: generateInitialSeats(get().audienceDensity)
       });
     },
 
